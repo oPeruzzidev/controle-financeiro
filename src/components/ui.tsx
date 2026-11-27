@@ -2,6 +2,7 @@
 import clsx from "clsx";
 import { X } from "lucide-react";
 import { ReactNode, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Tip } from "@/lib/finance";
 import { Lightbulb, AlertTriangle, CheckCircle2, Info, ShieldAlert } from "lucide-react";
 
@@ -110,7 +111,9 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
     };
   }, [open]);
   if (!open) return null;
-  return (
+  // Portal no body: a aba fica dentro de .fade-up (animação com transform), que prenderia o
+  // `position: fixed` à aba e deixaria o modal abaixo do cabeçalho e da barra inferior.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={id} className="card pop max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-b-none p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-lg sm:rounded-b-2xl sm:pb-5">
         <div className="mb-4 flex items-center justify-between">
@@ -121,7 +124,8 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
