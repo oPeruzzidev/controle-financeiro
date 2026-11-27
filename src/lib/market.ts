@@ -19,6 +19,41 @@ export interface Market {
   dolar: { last: number; change12m: number } | null;
   indices: Record<IndexKey, IndexQuote | null>;
   errors: string[];
+  staleFrom?: string; // ISO do resultado guardado usado para completar fontes que falharam
+}
+
+const INDEX_KEYS: IndexKey[] = ["ibov", "sp500", "bova11", "ivvb11", "xfix11"];
+
+/** Verdadeiro quando o objeto tem o formato de Market e pelo menos um indicador. */
+export function hasMarketData(m: unknown): m is Market {
+  const x = m as Market | null;
+  if (!x || typeof x !== "object" || !x.indices || typeof x.indices !== "object") return false;
+  return [x.selic, x.cdi, x.ipca12m, x.ipcaExpect, x.dolar, ...INDEX_KEYS.map((k) => x.indices[k])].some((v) => v != null);
+}
+
+/** Completa cada campo que falhou em `fresh` com o último resultado bom (`saved`). */
+export function mergeMarket(fresh: Market, saved: Market): Market {
+  let filled = false;
+  const pick = <T>(a: T | null, b: T | null): T | null => {
+    if (a != null) return a;
+    if (b != null) filled = true;
+    return b ?? null;
+  };
+  const selic = pick(fresh.selic, saved.selic);
+  const ipcaExpect = pick(fresh.ipcaExpect, saved.ipcaExpect);
+  const merged: Market = {
+    updatedAt: fresh.updatedAt,
+    selic,
+    cdi: pick(fresh.cdi, saved.cdi),
+    ipca12m: pick(fresh.ipca12m, saved.ipca12m),
+    ipcaExpect,
+    realRate: selic != null && ipcaExpect != null ? realRate(selic, ipcaExpect) : null,
+    dolar: pick(fresh.dolar, saved.dolar),
+    indices: Object.fromEntries(INDEX_KEYS.map((k) => [k, pick(fresh.indices[k], saved.indices?.[k] ?? null)])) as Market["indices"],
+    errors: fresh.errors,
+  };
+  if (filled) merged.staleFrom = saved.staleFrom ?? saved.updatedAt;
+  return merged;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

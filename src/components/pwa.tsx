@@ -4,12 +4,28 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { Button } from "./ui";
 
 /* ---------------- Service worker ---------------- */
+// Mesmo nome de cache usado em public/sw.js (VERSION).
+const SW_CACHE = "cf-v1";
+
 export function useRegisterSW() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {
-      /* sem service worker o app continua funcionando, só não abre offline */
-    });
+    navigator.serviceWorker
+      .register("/sw.js", { scope: "/", updateViaCache: "none" })
+      .then(() => navigator.serviceWorker.ready)
+      .then(async () => {
+        // Os JS/CSS/fontes desta primeira visita carregaram antes do service worker assumir:
+        // guarda-os agora para o app já abrir offline na próxima vez.
+        const urls = performance
+          .getEntriesByType("resource")
+          .map((e) => e.name)
+          .filter((u) => u.startsWith(`${location.origin}/_next/static/`));
+        const cache = await caches.open(SW_CACHE);
+        await Promise.allSettled(urls.map((u) => cache.add(u)));
+      })
+      .catch(() => {
+        /* sem service worker o app continua funcionando, só não abre offline */
+      });
   }, []);
 }
 
@@ -82,7 +98,8 @@ const readDismissed = () => {
 function IOSSteps() {
   return (
     <span>
-      Toque em <b>Compartilhar</b> <Share size={13} className="inline -translate-y-0.5" /> e depois em <b>“Adicionar à Tela de Início”</b>.
+      Toque em <b>Compartilhar</b> <Share size={13} className="inline -translate-y-0.5" /> e depois em <b>“Adicionar à Tela de Início”</b>.{" "}
+      No iPhone o app instalado não enxerga os dados do Safari: antes, exporte um backup em <b>Dados</b> e importe no app instalado.
     </span>
   );
 }

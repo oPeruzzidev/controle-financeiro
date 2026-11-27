@@ -5,17 +5,20 @@ import { FormEvent, useMemo, useState } from "react";
 import { compute, incomeSplit, Tip } from "@/lib/finance";
 import { money, pct, todayISO, uid } from "@/lib/format";
 import {
+  APORTE_INVEST,
+  APORTE_RESERVA,
   CLASSES,
   DEFAULT_REAL_RETURN,
   extrasHint,
   futureValue,
   monthlyIncomeFrom,
+  monthPlan,
+  MonthPlan,
   PROFILE_LABEL,
   profileFromAnswers,
   QUIZ,
   RESERVE_COLOR,
-  reserveTarget,
-  suggestAllocation,
+  tiltInputsComplete,
   yearsToGoal,
 } from "@/lib/invest";
 import type { Market } from "@/lib/market";
@@ -38,8 +41,10 @@ export function InvestView({ data, month }: { data: AppData; month: string }) {
   const { market, status, savedAt } = useMarket();
   const c = useMemo(() => compute(data, month), [data, month]);
   const { extra } = useMemo(() => incomeSplit(data, month), [data, month]);
-  const target = useMemo(() => reserveTarget(data, month), [data, month]);
-  const surplus = Math.max(0, c.balance);
+  const plan = useMemo(() => monthPlan(data, month, market), [data, month, market]);
+  // Capacidade do mês = renda − consumo (não muda ao registrar aportes); "falta" = o que ainda não foi aportado.
+  const capacity = Math.max(0, c.poupado);
+  const remaining = Math.max(0, c.balance);
   const investedThisMonth = c.byCat["Investimentos"] ?? 0;
 
   return (
@@ -52,9 +57,13 @@ export function InvestView({ data, month }: { data: AppData; month: string }) {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-[13px] font-medium text-muted">Sobra do mês</div>
-            <div className={clsx("tabular text-2xl font-semibold tracking-tight", surplus > 0 ? "text-ok" : "text-muted")}>{money(surplus)}</div>
-            {investedThisMonth > 0 && <div className="text-xs text-muted">Já investido este mês: {money(investedThisMonth)}</div>}
+            <div className="text-[13px] font-medium text-muted">Sobra do mês para investir</div>
+            <div className={clsx("tabular text-2xl font-semibold tracking-tight", capacity > 0 ? "text-ok" : "text-muted")}>{money(capacity)}</div>
+            {investedThisMonth > 0 && (
+              <div className="text-xs text-muted">
+                Já investido este mês: {money(investedThisMonth)} · falta {money(remaining)}
+              </div>
+            )}
           </div>
           {profile && (
             <div className="flex flex-wrap items-center gap-2">
@@ -80,23 +89,21 @@ export function InvestView({ data, month }: { data: AppData; month: string }) {
 
       <Panorama market={market} status={status} savedAt={savedAt} />
 
-      {profile && !quiz && (
+      {profile && plan && !quiz && (
         <>
-          <Allocation
-            profile={profile}
-            surplus={surplus}
-            balance={c.balance}
-            extra={extra}
-            reserve={inv.reserve}
-            target={target}
-            market={market}
-            onAporte={() => setAporte(true)}
-          />
-          <FutureIncome invested={inv.invested} reserve={inv.reserve} goal={inv.goalMonthly ?? 0} realReturn={inv.realReturn ?? DEFAULT_REAL_RETURN[profile]} defaultMonthly={surplus} />
+          <Allocation plan={plan} balance={c.balance} extra={extra} reserve={inv.reserve} market={market} onAporte={() => setAporte(true)} />
+          <FutureIncome invested={inv.invested} reserve={inv.reserve} goal={inv.goalMonthly ?? 0} realReturn={inv.realReturn ?? DEFAULT_REAL_RETURN[profile]} defaultMonthly={capacity} />
         </>
       )}
 
-      {aporte && <AporteModal month={month} defaultAmount={surplus} defaultDest={inv.reserve < target ? "reserva" : "investimentos"} onClose={() => setAporte(false)} />}
+      {aporte && (
+        <AporteModal
+          month={month}
+          defaultDest={plan && plan.reserveLeft > 0 ? "reserva" : "investimentos"}
+          defaultAmount={plan && plan.reserveLeft > 0 ? Math.min(plan.reserveLeft, remaining) : remaining}
+          onClose={() => setAporte(false)}
+        />
+      )}
     </div>
   );
 }
@@ -172,6 +179,7 @@ function Panorama({ market, status, savedAt }: { market: Market | null; status: 
           </div>
           <p className="mt-3 text-[11px] text-muted">
             Fontes: Banco Central do Brasil e Yahoo Finance · atualizado em {when(m.updatedAt)}
+            {m.staleFrom && <> · algumas fontes fora do ar: parte dos valores é de {when(m.staleFrom)}</>}
             {status === "cached" && savedAt && <> · sem conexão, mostrando dados salvos em {when(savedAt)}</>}
           </p>
         </>
@@ -181,32 +189,28 @@ function Panorama({ market, status, savedAt }: { market: Market | null; status: 
 }
 
 /* ---------------- Divisão da sobra ---------------- */
-function Allocation(p: {
-  profile: Profile;
-  surplus: number;
-  balance: number;
-  extra: number;
-  reserve: number;
-  target: number;
-  market: Market | null;
-  onAporte: () => void;
-}) {
-  const a = suggestAllocation({ surplus: p.surplus, profile: p.profile, reserve: p.reserve, reserveTarget: p.target, market: p.market });
-  const missing = Math.max(0, p.target - p.reserve);
+function Allocation(p: { plan: MonthPlan; balance: number; extra: number; reserve: number; market: Market | null; onAporte: () => void }) {
+  const a = p.plan.allocation;
+  const missing = Math.max(0, p.plan.target - p.reserve);
   const rows = [
     ...(a.toReserve > 0
-      ? [{ id: "reserva", label: "Reserva de emergência", example: "Tesouro Selic ou CDB com liquidez diária", what: `Meta de ${money(p.target)} (6 meses de gastos) · faltam ${money(missing)}.`, color: RESERVE_COLOR, value: a.toReserve }]
+      ? [{ id: "reserva", label: "Reserva de emergência", example: "Tesouro Selic ou CDB com liquidez diária", what: `Meta de ${money(p.plan.target)} (6 meses de gastos) · faltam ${money(missing)}.`, color: RESERVE_COLOR, value: a.toReserve }]
       : []),
     ...CLASSES.map((c) => ({ ...c, value: a.byClass[c.id] })).filter((r) => r.value > 0),
   ];
   const tips: Tip[] = a.reasons.map((r) => ({ level: "info", title: "Ajuste do mês", text: r }));
   const hint = extrasHint(p.extra);
   if (hint) tips.push({ level: "good", title: "Renda extra", text: hint });
-  if (p.market && a.reasons.length === 0) tips.push({ level: "info", title: "Sem ajustes este mês", text: "Os indicadores estão dentro do normal; a divisão segue os pesos do seu perfil." });
+  if (p.market && !tiltInputsComplete(p.market)) {
+    tips.push({ level: "warn", title: "Alguns indicadores indisponíveis", text: "Parte dos dados de mercado não carregou agora; os ajustes do mês usam só o que está disponível." });
+  } else if (p.market && a.reasons.length === 0) {
+    tips.push({ level: "info", title: "Sem ajustes este mês", text: "Os indicadores estão dentro do normal; a divisão segue os pesos do seu perfil." });
+  }
+  const done = p.plan.aportes.reserve + p.plan.aportes.invest;
 
   return (
     <Card>
-      <CardTitle sub="Sugestão para a sobra deste mês">Como dividir seus {money(p.surplus)}</CardTitle>
+      <CardTitle sub="Sugestão para a sobra deste mês">Como dividir seus {money(a.total)}</CardTitle>
       {a.total === 0 ? (
         <Empty
           icon={<PiggyBank size={22} />}
@@ -235,6 +239,12 @@ function Allocation(p: {
               <TipList tips={tips} />
             </div>
           )}
+          {done > 0 && (
+            <p className="mt-4 rounded-xl bg-surface-2 px-3 py-2 text-[13px] text-muted">
+              Já aportado este mês: <b className="tabular text-fg">{money(done)}</b>
+              {p.plan.aportes.reserve > 0 && <> (reserva {money(p.plan.aportes.reserve)})</>} · falta <b className="tabular text-fg">{money(p.plan.remaining)}</b>
+            </p>
+          )}
           <Button variant="primary" className="mt-5 w-full sm:w-auto" onClick={p.onAporte}><Plus size={16} /> Registrar aporte</Button>
         </>
       )}
@@ -256,7 +266,7 @@ function AporteModal({ month, defaultAmount, defaultDest, onClose }: { month: st
     if (amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
     update((d) => {
       const cur = { invested: 0, reserve: 0, ...d.invest };
-      const desc = dest === "reserva" ? "Aporte – Reserva de emergência" : "Aporte – Investimentos";
+      const desc = dest === "reserva" ? APORTE_RESERVA : APORTE_INVEST;
       return {
         ...d,
         expenses: [...d.expenses, { id: uid(), desc, amount, category: "Investimentos", date }],

@@ -1,6 +1,6 @@
 /* Service worker do Meu Controle Financeiro: abre offline e guarda o último panorama de mercado.
  * Os dados financeiros ficam no localStorage do aparelho; este arquivo só lida com arquivos do app. */
-const VERSION = "cf-v1";
+const VERSION = "cf-v1"; // mesmo nome que SW_CACHE em src/components/pwa.tsx
 const PRECACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

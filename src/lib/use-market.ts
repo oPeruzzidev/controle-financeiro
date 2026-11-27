@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { Market } from "./market";
+import { hasMarketData, Market, mergeMarket } from "./market";
 
 const KEY = "cf-market";
 type Saved = { savedAt: string; market: Market };
@@ -10,7 +10,7 @@ function readSaved(): Saved | null {
   try {
     const raw = localStorage.getItem(KEY);
     const s = raw ? (JSON.parse(raw) as Saved) : null;
-    return s && s.market && typeof s.savedAt === "string" ? s : null;
+    return s && hasMarketData(s.market) && typeof s.savedAt === "string" ? s : null;
   } catch {
     return null;
   }
@@ -29,7 +29,10 @@ export function useMarket(): { market: Market | null; status: MarketStatus; save
     const saved = readSaved();
     fetch("/api/mercado")
       .then((r) => (r.ok ? (r.json() as Promise<Market>) : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((market) => {
+      .then((fresh) => {
+        // Fontes que falharam são completadas com o último resultado bom; resposta sem nenhum dado conta como falha.
+        const market = saved && hasMarketData(fresh) ? mergeMarket(fresh, saved.market) : fresh;
+        if (!hasMarketData(market)) throw new Error("sem dados de mercado");
         const savedAt = new Date().toISOString();
         try {
           localStorage.setItem(KEY, JSON.stringify({ savedAt, market }));

@@ -145,7 +145,7 @@ export function Shell() {
 
       {/* Navegação inferior mobile */}
       <nav aria-label="Principal" className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-surface/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        {TABS.filter((t) => MOBILE_MAIN.includes(t.id)).map((t) => (
+        {MOBILE_MAIN.map((id) => TABS.find((t) => t.id === id)!).map((t) => (
           <button key={t.id} onClick={() => go(t.id)} aria-current={tab === t.id ? "page" : undefined}
             className={clsx("flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-0.5 px-1 py-2.5 text-[11px] font-medium", tab === t.id ? "text-brand" : "text-muted")}>
             <t.icon size={20} /> {t.label}

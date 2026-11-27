@@ -173,6 +173,58 @@ export function yearsToGoal(invested: number, monthly: number, realReturnPct: nu
   return null;
 }
 
+/** Verdadeiro quando todos os indicadores usados pelos ajustes do mês estão disponíveis. */
+export function tiltInputsComplete(m: Market | null): boolean {
+  return !!m && m.realRate != null && m.dolar != null && m.indices.ibov != null && m.indices.xfix11 != null;
+}
+
+/* ---------------- Plano do mês (estável ao registrar aportes) ---------------- */
+export const APORTE_RESERVA = "Aporte – Reserva de emergência";
+export const APORTE_INVEST = "Aporte – Investimentos";
+
+/** Aportes do mês (gastos na categoria Investimentos): os da reserva vs. os demais. */
+export function aportesInMonth(d: AppData, m: string): { reserve: number; invest: number } {
+  let reserve = 0;
+  let invest = 0;
+  for (const e of d.expenses) {
+    if (e.category !== "Investimentos" || e.date.slice(0, 7) !== m) continue;
+    if (e.desc === APORTE_RESERVA) reserve += e.amount;
+    else invest += e.amount;
+  }
+  return { reserve, invest };
+}
+
+export interface MonthPlan {
+  capacity: number; // renda − consumo: o que o mês permite investir (inclui aportes já feitos)
+  remaining: number; // capacidade ainda não aportada
+  aportes: { reserve: number; invest: number };
+  target: number; // meta da reserva
+  reserveLeft: number; // parte da sugestão de reserva ainda não aportada
+  allocation: Allocation;
+}
+
+/**
+ * Sugestão do mês calculada sobre a capacidade do mês e a reserva do início do mês,
+ * para que registrar o aporte sugerido não mude a própria sugestão.
+ */
+export function monthPlan(d: AppData, m: string, market: Market | null): MonthPlan | null {
+  const profile = d.invest?.profile;
+  if (!profile) return null;
+  const aportes = aportesInMonth(d, m);
+  const capacity = Math.max(0, compute(d, m).poupado);
+  const target = reserveTarget(d, m);
+  const reserveStart = Math.max(0, (d.invest?.reserve ?? 0) - aportes.reserve);
+  const allocation = suggestAllocation({ surplus: capacity, profile, reserve: reserveStart, reserveTarget: target, market });
+  return {
+    capacity,
+    remaining: Math.max(0, capacity - aportes.reserve - aportes.invest),
+    aportes,
+    target,
+    reserveLeft: Math.max(0, allocation.toReserve - aportes.reserve),
+    allocation,
+  };
+}
+
 export function extrasHint(extra: number): string | null {
   if (!(extra > 0)) return null;
   return `Você recebeu ${money(extra)} de renda extra este mês. Como esse dinheiro não estava no orçamento, invista pelo menos 80% dele (${money(extra * 0.8)}).`;

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  aportesInMonth,
+  APORTE_INVEST,
+  APORTE_RESERVA,
+  monthPlan,
+  tiltInputsComplete,
   applyTilts,
   BASE_WEIGHTS,
   extrasHint,
@@ -12,7 +17,7 @@ import {
   yearsToGoal,
 } from "@/lib/invest";
 import type { IndexKey, IndexQuote, Market } from "@/lib/market";
-import { emptyData, Profile } from "@/lib/types";
+import { AppData, emptyData, Profile } from "@/lib/types";
 
 /** Market com tudo null, sobrescrito pelo que o teste informar. */
 function mk(p: { realRate?: number; dolar?: { change12m: number }; indices?: Partial<Record<IndexKey, Partial<IndexQuote>>> } = {}): Market {
@@ -140,5 +145,55 @@ describe("extrasHint", () => {
   it("sugere investir 80% da renda extra", () => {
     expect(extrasHint(0)).toBeNull();
     expect(nbsp(extrasHint(600))).toContain("R$ 480,00");
+  });
+});
+
+describe("plano do mês", () => {
+  function month(): AppData {
+    const d = emptyData();
+    d.incomes = [{ id: "s", desc: "Salário", amount: 5000, type: "recorrente", month: "2026-11" }];
+    d.expenses = [{ id: "g", desc: "Mercado", amount: 3800, category: "Alimentação", date: "2026-11-05" }];
+    d.invest = { profile: "moderado", invested: 0, reserve: 0 };
+    return d;
+  }
+  // meta da reserva = 6 × 3800 = 22800
+
+  it("aportesInMonth separa aportes da reserva dos demais investimentos", () => {
+    const d = month();
+    d.expenses.push(
+      { id: "a1", desc: APORTE_RESERVA, amount: 840, category: "Investimentos", date: "2026-11-10" },
+      { id: "a2", desc: APORTE_INVEST, amount: 100, category: "Investimentos", date: "2026-11-11" },
+      { id: "a3", desc: "Tesouro", amount: 50, category: "Investimentos", date: "2026-11-12" },
+      { id: "a4", desc: APORTE_RESERVA, amount: 999, category: "Investimentos", date: "2026-10-12" },
+    );
+    expect(aportesInMonth(d, "2026-11")).toEqual({ reserve: 840, invest: 150 });
+  });
+
+  it("registrar o aporte sugerido não muda a sugestão nem a capacidade do mês", () => {
+    const d = month();
+    const before = monthPlan(d, "2026-11", null)!;
+    expect(before.capacity).toBe(1200);
+    expect(before.allocation.toReserve).toBe(840);
+    d.expenses.push({ id: "a1", desc: APORTE_RESERVA, amount: 840, category: "Investimentos", date: "2026-11-10" });
+    d.invest = { ...d.invest!, reserve: 840 };
+    const after = monthPlan(d, "2026-11", null)!;
+    expect(after.capacity).toBe(1200);
+    expect(after.allocation).toEqual(before.allocation);
+    expect(after.remaining).toBe(360);
+    expect(after.reserveLeft).toBe(0);
+  });
+
+  it("sem perfil não há plano", () => {
+    const d = month();
+    d.invest = { invested: 0, reserve: 0 };
+    expect(monthPlan(d, "2026-11", null)).toBeNull();
+  });
+});
+
+describe("tiltInputsComplete", () => {
+  it("só é verdadeiro com todos os indicadores usados pelas regras", () => {
+    expect(tiltInputsComplete(null)).toBe(false);
+    expect(tiltInputsComplete(mk({ realRate: 7 }))).toBe(false);
+    expect(tiltInputsComplete(mk({ realRate: 7, dolar: { change12m: 1 }, indices: { ibov: {}, xfix11: {} } }))).toBe(true);
   });
 });
