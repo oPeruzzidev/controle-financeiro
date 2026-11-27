@@ -47,8 +47,8 @@ export function Report({ data, month }: { data: AppData; month: string }) {
             const cat = CAT[r.name];
             return (
               <div key={r.name}>
-                <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
-                  <span className="flex items-center gap-2 font-medium">{cat ? <span>{cat.emoji}</span> : <span>💰</span>} {r.name}</span>
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-sm">
+                  <span className="flex min-w-0 items-center gap-2 font-medium">{cat ? <span>{cat.emoji}</span> : <span>💰</span>} {r.name}</span>
                   <span className="tabular"><b>{pct(p)}</b> <span className="text-muted">· {money(r.value)}</span></span>
                 </div>
                 <ProgressBar value={p} color={r.color} />

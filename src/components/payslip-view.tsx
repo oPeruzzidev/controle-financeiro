@@ -110,7 +110,7 @@ export function PayslipView({ data, month }: { data: AppData; month: string }) {
       ) : (
         <>
           {latest.gross > 0 && (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               <Stat label={`Bruto · ${monthLabel(latest.month)}`} value={money(latest.gross)} />
               <Stat label="Líquido" value={money(latest.net)} sub={`${pct((latest.net / latest.gross) * 100)} do bruto`} tone="pos" />
               <Stat label="Total de descontos" value={money(desc)} sub={`${pct((desc / latest.gross) * 100)} do bruto`} tone={desc / latest.gross > 0.3 ? "neg" : undefined} />

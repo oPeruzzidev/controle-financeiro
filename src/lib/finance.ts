@@ -1,5 +1,5 @@
-import { AppData, CAT, CATEGORIES } from "./types";
-import { money, pct } from "./format";
+import { AppData, CAT, CATEGORIES, Income } from "./types";
+import { money, pct, shiftMonth } from "./format";
 
 export const incomesFor = (d: AppData, m: string) =>
   d.incomes.filter((i) => (i.type === "recorrente" ? i.month <= m : i.month === m));
@@ -7,6 +7,25 @@ export const fixedFor = (d: AppData, m: string) => d.fixed.filter((f) => f.from 
 export const expensesFor = (d: AppData, m: string) =>
   d.expenses.filter((e) => e.date.slice(0, 7) === m);
 const sum = (a: { amount: number }[]) => a.reduce((s, x) => s + x.amount, 0);
+
+/** Renda do mês separada em fixa (recorrente) e extra (única). */
+export function incomeSplit(d: AppData, m: string) {
+  const list = incomesFor(d, m);
+  return {
+    fixed: sum(list.filter((i) => i.type === "recorrente")),
+    extra: sum(list.filter((i) => i.type === "unica")),
+  };
+}
+
+/** Data de uma renda extra; extras antigos sem data caem no dia 1 do mês. */
+export const extraDate = (i: Income) => i.date ?? `${i.month}-01`;
+
+/** Média mensal dos extras nos últimos `months` meses (inclui o mês m). */
+export function extraAverage(d: AppData, m: string, months = 6) {
+  let total = 0;
+  for (let k = 0; k < months; k++) total += incomeSplit(d, shiftMonth(m, -k)).extra;
+  return total / months;
+}
 
 export interface Computed {
   month: string;

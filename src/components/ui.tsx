@@ -7,7 +7,7 @@ import { Lightbulb, AlertTriangle, CheckCircle2, Info, ShieldAlert } from "lucid
 
 export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={clsx("card p-5", className)} {...rest}>
+    <div className={clsx("card p-4 sm:p-5", className)} {...rest}>
       {children}
     </div>
   );
@@ -48,7 +48,7 @@ export function Button({ variant = "ghost", size = "md", className, ...rest }: B
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
-    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-muted">
+    <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-muted">
       {label}
       {children}
       {hint && <span className="text-xs font-normal">{hint}</span>}
@@ -56,7 +56,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   );
 }
 const inputCls =
-  "h-11 w-full rounded-xl border border-line bg-surface-2 px-3 text-[15px] text-fg outline-none transition placeholder:text-muted/60 focus:border-brand focus:ring-2 focus:ring-brand/25";
+  "h-11 w-full min-w-0 rounded-xl border border-line bg-surface-2 px-3 text-base text-fg sm:text-[15px] outline-none transition placeholder:text-muted/60 focus:border-brand focus:ring-2 focus:ring-brand/25";
 export const Input = (p: React.InputHTMLAttributes<HTMLInputElement>) => (
   <input {...p} className={clsx(inputCls, p.className)} />
 );
@@ -112,7 +112,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={id} className="card pop max-h-[92vh] w-full overflow-y-auto rounded-b-none p-5 sm:max-w-lg sm:rounded-b-2xl">
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={id} className="card pop max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-b-none p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-lg sm:rounded-b-2xl sm:pb-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 id={id} className="text-lg font-semibold tracking-tight">{title}</h2>
           <button onClick={onClose} aria-label="Fechar" className="cursor-pointer rounded-lg p-2 text-muted hover:bg-surface-2">
@@ -148,11 +148,11 @@ export function Badge({ children, color }: { children: ReactNode; color?: string
 export function Stat({ label, value, sub, tone, icon }: { label: string; value: ReactNode; sub?: ReactNode; tone?: "pos" | "neg"; icon?: ReactNode }) {
   return (
     <Card className="fade-up">
-      <div className="flex items-center justify-between text-[13px] font-medium text-muted">
-        {label}
-        {icon && <span className="grid h-8 w-8 place-items-center rounded-lg bg-surface-2">{icon}</span>}
+      <div className="flex items-center justify-between gap-2 text-[13px] font-medium text-muted">
+        <span className="min-w-0">{label}</span>
+        {icon && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2">{icon}</span>}
       </div>
-      <div className={clsx("tabular mt-2 text-2xl font-semibold tracking-tight", tone === "pos" && "text-ok", tone === "neg" && "text-danger")}>{value}</div>
+      <div className={clsx("tabular mt-2 text-[clamp(1.05rem,5vw,1.5rem)] font-semibold tracking-tight [overflow-wrap:anywhere] sm:text-2xl", tone === "pos" && "text-ok", tone === "neg" && "text-danger")}>{value}</div>
       {sub && <div className="mt-1 text-xs text-muted">{sub}</div>}
     </Card>
   );

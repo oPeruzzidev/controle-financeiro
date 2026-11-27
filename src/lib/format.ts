@@ -33,4 +33,9 @@ export const monthLabel = (key: string) => {
   return `${n[0].toUpperCase()}${n.slice(1)} de ${y}`;
 };
 export const shortMonth = (key: string) => MONTHS[Number(key.split("-")[1]) - 1].slice(0, 3);
+/** "2026-11" → "Nov 2026" */
+export const monthShortLabel = (key: string) => {
+  const s = shortMonth(key);
+  return `${s[0].toUpperCase()}${s.slice(1)} ${key.slice(0, 4)}`;
+};
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);

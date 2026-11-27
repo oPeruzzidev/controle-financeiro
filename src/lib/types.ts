@@ -25,12 +25,25 @@ export const CAT: Record<string, Category> = Object.fromEntries(
   CATEGORIES.map((c) => [c.name, c]),
 );
 
+export const INCOME_SOURCES = ["Freelance", "Hora extra", "Comissão", "Venda", "Aluguel", "Bônus", "Outros"] as const;
+
 export interface Income {
   id: string;
   desc: string;
   amount: number;
-  type: "recorrente" | "unica";
+  type: "recorrente" | "unica"; // na interface: "Fixa" / "Extra"
   month: string; // YYYY-MM (início, se recorrente)
+  date?: string; // YYYY-MM-DD, só para extras
+  source?: string; // um de INCOME_SOURCES, só para extras
+}
+
+export type Profile = "conservador" | "moderado" | "arrojado";
+export interface InvestSettings {
+  profile?: Profile;
+  invested: number; // já investido (fora a reserva)
+  reserve: number; // reserva de emergência
+  goalMonthly?: number; // renda extra mensal desejada no futuro
+  realReturn?: number; // rentabilidade real anual esperada (%)
 }
 export interface FixedBill {
   id: string;
@@ -61,6 +74,7 @@ export interface AppData {
   fixed: FixedBill[];
   expenses: Expense[];
   payslips: Payslip[];
+  invest?: InvestSettings;
 }
 export const emptyData = (): AppData => ({
   incomes: [],

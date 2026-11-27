@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { APP_DESCRIPTION } from "./meta";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Meu Controle Financeiro",
-  description:
-    "Plataforma de controle financeiro pessoal: rendas, contas fixas, gastos, relatório de consumo da renda, dicas de economia e análise de holerite.",
+  description: APP_DESCRIPTION,
+  appleWebApp: { capable: true, title: "Financeiro", statusBarStyle: "default" },
 };
 export const viewport: Viewport = {
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f4f6f9" },
     { media: "(prefers-color-scheme: dark)", color: "#070b12" },

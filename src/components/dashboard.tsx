@@ -1,14 +1,16 @@
 "use client";
 import { ArrowDownRight, ArrowUpRight, Lock, PiggyBank, ShoppingBag, Sparkles, Wallet } from "lucide-react";
 import { useMemo } from "react";
-import { buildTips, compute, potentialSavings } from "@/lib/finance";
+import { buildTips, compute, incomeSplit, potentialSavings } from "@/lib/finance";
 import { money, pct, shiftMonth, shortMonth } from "@/lib/format";
 import { AppData } from "@/lib/types";
 import { Donut, HistoryChart, slicesOf } from "./charts";
+import { InstallBanner } from "./pwa";
 import { Card, CardTitle, Empty, Stat, TipList, Button } from "./ui";
 
 export function Dashboard({ data, month, go }: { data: AppData; month: string; go: (t: string) => void }) {
   const c = useMemo(() => compute(data, month), [data, month]);
+  const split = useMemo(() => incomeSplit(data, month), [data, month]);
   const tips = useMemo(() => buildTips(c), [c]);
   const history = useMemo(
     () =>
@@ -25,6 +27,8 @@ export function Dashboard({ data, month, go }: { data: AppData; month: string; g
 
   if (!c.hasData) {
     return (
+      <div className="flex flex-col gap-5">
+      <InstallBanner />
       <Card>
         <Empty
           icon={<Sparkles size={22} />}
@@ -38,13 +42,15 @@ export function Dashboard({ data, month, go }: { data: AppData; month: string; g
           }
         />
       </Card>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Renda do mês" value={money(c.income)} icon={<Wallet size={16} />} sub="salário + outros proventos" />
+      <InstallBanner />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <Stat label="Renda do mês" value={money(c.income)} icon={<Wallet size={16} />} sub={split.extra > 0 ? `fixa ${money(split.fixed)} + extras ${money(split.extra)}` : "salário + outros proventos"} />
         <Stat label="Contas fixas" value={money(c.fixedTotal)} icon={<Lock size={16} />} sub={c.income ? `${pct((c.fixedTotal / c.income) * 100)} da renda` : undefined} />
         <Stat label="Gastos variáveis" value={money(c.varTotal)} icon={<ShoppingBag size={16} />} sub={c.income ? `${pct((c.varTotal / c.income) * 100)} da renda` : undefined} />
         <Stat

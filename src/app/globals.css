@@ -52,6 +52,9 @@
 
 html {
   color-scheme: light dark;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 body {
   background: var(--bg);
@@ -59,12 +62,25 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
-.dark body {
+/* Gradiente do tema escuro num pseudo-elemento fixo (fundo "fixed" no body trava a rolagem no iOS). */
+.dark body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(900px 500px at 85% -10%, rgb(52 211 153 / 0.08), transparent 60%),
-    radial-gradient(700px 400px at -5% 10%, rgb(59 130 246 / 0.07), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
+    radial-gradient(700px 400px at -5% 10%, rgb(59 130 246 / 0.07), transparent 60%);
+}
+/* iOS: campo de data com largura intrínseca estoura grids e centraliza o texto. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
 }
 
 .card {
